@@ -1,0 +1,835 @@
+{
+  "name": "RSS Post",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2064,
+        400
+      ],
+      "id": "87a425f4-b78b-47a4-9698-747a2f1e9c8a",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://www.arnewsline.org/?format=rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        -1840,
+        16
+      ],
+      "id": "2050e307-76b0-4b0d-9a8e-401ac7e38c38",
+      "name": "RSS Read",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please summarise into social media post, combine with the short URL and make sure it makes sense.  Maximum charachters 200. Go!! {{ $json.content }} {{ $('Tiny').item.json.data.tiny_url }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -496,
+        160
+      ],
+      "id": "9664ee09-9d02-42fe-a10a-84737098d56b",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        384
+      ],
+      "id": "c92e60c6-8688-47d6-97f2-bb811eec2723",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "aJfMDY0IHJ0c1SX2",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tinyurl.com/create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer PN6QeolO7tTTPV6rd8lrZCYXXFr409lj7qGpPv3pTvbHCQbaLTXtVCSODvy6"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.link }}"
+            },
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1168,
+        288
+      ],
+      "id": "d8a79e1c-daaf-4951-a733-3c07bb9262a6",
+      "name": "Tiny"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -944,
+        208
+      ],
+      "id": "d9a30326-de41-4be8-9b34-9f6718bc6d3a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "url": "https://www.nasa.gov/aeronautics/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        -1840,
+        208
+      ],
+      "id": "d4eaabaf-b3a3-4de8-a5a3-11093487a7bd",
+      "name": "RSS NASA"
+    },
+    {
+      "parameters": {
+        "url": "https://moxie.foxnews.com/google-publisher/politics.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        -1840,
+        592
+      ],
+      "id": "e009d078-0589-4b19-9d0c-c2bc3160bf5f",
+      "name": "Fox US Politics"
+    },
+    {
+      "parameters": {
+        "url": "https://moxie.foxnews.com/google-publisher/world.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        -1840,
+        784
+      ],
+      "id": "5e073383-b027-4773-bffa-334b134a244d",
+      "name": "Fox World"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "242d0792-5423-471b-91c9-d359bfbbcf7a",
+              "leftValue": "={{ $json.link }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1392,
+        304
+      ],
+      "id": "72651f91-a255-450a-8336-26f827e3b60a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "batchSize": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        208
+      ],
+      "id": "6e77b5bb-23cc-42b4-9ec3-a5cb30067138",
+      "name": "Split In Batches"
+    },
+    {
+      "parameters": {
+        "postText": "={{ $json.text }}"
+      },
+      "type": "@muench-dev/n8n-nodes-bluesky.bluesky",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        352
+      ],
+      "id": "8c220137-89c9-4974-a495-a230a58d1ae9",
+      "name": "Create a post",
+      "credentials": {
+        "blueskyApi": {
+          "id": "2bM5j1QMNAiDYXKw",
+          "name": "Bluesky account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={{ $json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        544
+      ],
+      "id": "c9f9f0bb-3d93-429b-9b98-b96959635d17",
+      "name": "Discord",
+      "webhookId": "7f532abc-66ab-46c0-8779-acd3f8d69520",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "rqhLWsZ3P4OJnvDI",
+          "name": "Discord Webhook account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://masto.supes.com",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-mastodon.mastodon",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        160
+      ],
+      "id": "a4ce2e85-be84-4c86-a8b5-dbe7857b5a4a",
+      "name": "Publish new status",
+      "retryOnFail": false,
+      "credentials": {
+        "mastodonOAuth2Api": {
+          "id": "30lfLxisssKhPPyL",
+          "name": "autoFeed"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "numberInputs": 4,
+        "output": "empty"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        256,
+        528
+      ],
+      "id": "82124849-3493-445e-b459-30c52cf3fac4",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "amount": 36
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        752
+      ],
+      "id": "ac7b17f9-f0d5-4e17-8b48-741554ed1778",
+      "name": "Wait Short",
+      "webhookId": "6e640606-c6d3-46fd-bb20-232af6cdaa8d"
+    },
+    {
+      "parameters": {
+        "amount": 120
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        -80
+      ],
+      "id": "146e6c4a-093d-4727-92b8-ed1e3398fa43",
+      "name": "Wait Long",
+      "webhookId": "9a9f63f7-85e9-4ab6-b2ba-d1b8677ab7c7"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8061be88-54f9-49c9-9ee1-93ae46bfc78f",
+              "leftValue": "any",
+              "rightValue": "429",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        192
+      ],
+      "id": "66b3868c-aafe-4a9b-91a6-1cc9dd77c073",
+      "name": "if - fail"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Commit success (promote pending → posted)\nconst state = $getWorkflowStaticData('global');\nstate.posted  = state.posted  || {};\nstate.pending = state.pending || {};\n\nconst NOW = Date.now();\nconst TTL_MS = 30*24*60*60*1000;\n\nconst items = await $input.all();\n\n// Optional: require all platforms succeeded\n// If you fan in with Merge:Append, you might get N items for the same key.\n// We'll commit on the first we see unless you enforce stricter checks.\nconst committed = new Set();\n\nfor (const item of items) {\n  const j = item.json || {};\n  const key = j.dedupe_key;\n  if (!key || committed.has(key)) continue;\n\n  // If you want \"ALL succeed\" logic, inspect j for each platform’s status here.\n\n  state.posted[key] = NOW;   // promote\n  delete state.pending[key]; // clear reservation\n  committed.add(key);\n}\n\n// TTL cleanup (posted only)\nfor (const k of Object.keys(state.posted)) {\n  if (NOW - state.posted[k] >= TTL_MS) delete state.posted[k];\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        384
+      ],
+      "id": "07a21f3f-e908-44dd-beda-9f0445b62741",
+      "name": "Commit"
+    },
+    {
+      "parameters": {
+        "chatId": "-1002899637373",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_notification": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        736
+      ],
+      "id": "a8db2230-3380-4fe4-bd68-46625bf36c4a",
+      "name": "telegram",
+      "webhookId": "f1383b21-5735-4c12-9050-0ca14161fba5",
+      "credentials": {
+        "telegramApi": {
+          "id": "QoMqqcK9v4tT5gCO",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === Persistent store ===\nconst state = $getWorkflowStaticData('global');\nstate.posted  = state.posted  || {};   // { key: timestamp }\nstate.pending = state.pending || {};   // { key: timestamp }\n\nconst NOW = Date.now();\nconst TTL_MS = 30*24*60*60*1000;     // 30 days\nconst PENDING_TTL = 2*60*60*1000;    // 2 hours – avoids stuck pendings\nconst MAX_KEYS = 5000;\nconst MAX_PER_RUN = 0;               // 0 = unlimited\n\n// URL normaliser: conservative + strip tracking + ignore hashes\nfunction normalise(u) {\n  try {\n    const url = new URL(String(u));\n    url.hash = '';                               // ignore fragments\n    url.hostname = url.hostname.toLowerCase();   // host is case-insensitive\n    url.pathname = url.pathname.replace(/\\/+$/, ''); // trim trailing slash\n    // drop noisy trackers\n    for (const p of [\n      'utm_source','utm_medium','utm_campaign','utm_term','utm_content',\n      'gclid','fbclid','mc_cid','mc_eid','igshid','ref','campaign_id'\n    ]) url.searchParams.delete(p);\n    return url.toString();\n  } catch {\n    return (u || '').toString();\n  }\n}\n\n// Stable key preference: link → guid → hash(title+date+source)\nfunction keyForItem(j) {\n  const link = (typeof j.link === 'string' && j.link) ? normalise(j.link) : '';\n  if (link) return `u:${link}`;\n  if (j.guid)  return `g:${String(j.guid)}`;\n  const raw = `${j.title || ''}::${j.pubDate || j.isoDate || ''}::${j.source || ''}`;\n  const crypto = require('crypto');\n  return 'h:' + crypto.createHash('sha1').update(raw).digest('hex');\n}\n\n// Cleanup helpers\nfunction gc() {\n  // expire posted\n  for (const k of Object.keys(state.posted)) {\n    if (NOW - state.posted[k] >= TTL_MS) delete state.posted[k];\n  }\n  // expire stale pending (e.g., crash mid-run)\n  for (const k of Object.keys(state.pending)) {\n    if (NOW - state.pending[k] >= PENDING_TTL) delete state.pending[k];\n  }\n  // cap map sizes (keep most recent)\n  for (const map of [state.posted, state.pending]) {\n    const keys = Object.keys(map);\n    if (keys.length > MAX_KEYS) {\n      keys.sort((a,b) => map[b]-map[a]);\n      for (const k of keys.slice(MAX_KEYS)) delete map[k];\n    }\n  }\n}\n\ngc();\n\nconst items = await $input.all();\nconst out = [];\nlet emitted = 0;\nlet skipped = 0;\n\nfor (const item of items) {\n  const j = item.json || {};\n  const key = keyForItem(j);\n  if (!key) continue;\n\n  // already posted recently?\n  if (state.posted[key] && (NOW - state.posted[key]) < TTL_MS) {\n    skipped++;\n    continue;\n  }\n\n  // in-flight already? (another execution is working on it)\n  if (state.pending[key] && (NOW - state.pending[key]) < PENDING_TTL) {\n    skipped++;\n    continue;\n  }\n\n  // reserve it\n  state.pending[key] = NOW;\n\n  // pass downstream with the dedupe key\n  out.push({ json: { ...j, dedupe_key: key } });\n  emitted += 1;\n  if (MAX_PER_RUN && emitted >= MAX_PER_RUN) break;\n}\n\n// Log deduplication stats\nconsole.log(`Deduplication: ${emitted} new articles, ${skipped} skipped (already posted/pending), ${Object.keys(state.posted).length} total posted, ${Object.keys(state.pending).length} pending`);\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1616,
+        208
+      ],
+      "id": "9cfcb9e2-97db-4a65-9d37-f3c615579565",
+      "name": "Store"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Debug logging for deduplication\nconst items = await $input.all();\n\nif (items.length === 0) {\n  console.log('No new articles to process - all were deduplicated');\n} else {\n  console.log(`Processing ${items.length} new articles:`);\n  for (const item of items) {\n    const j = item.json || {};\n    console.log(`- ${j.title || 'No title'} (${j.dedupe_key})`);\n  }\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1392,
+        208
+      ],
+      "id": "debug-log",
+      "name": "Debug Log"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2064,
+        928
+      ],
+      "id": "9297d362-608a-4a49-ac52-482df2d1968a",
+      "name": "Trigger1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2064,
+        736
+      ],
+      "id": "031c9180-8c55-469c-a1de-9b9fbfb81cac",
+      "name": "Trigger2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2064,
+        64
+      ],
+      "id": "900d426c-593d-4692-99b5-2dc5d4679d81",
+      "name": "Trigger3"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2064,
+        -128
+      ],
+      "id": "2dcc6b23-e776-4ea9-9244-bb8ed71a9d60",
+      "name": "Trigger4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "RSS NASA",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fox US Politics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fox World",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tiny": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Publish new status",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS NASA": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fox US Politics": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fox World": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Tiny",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Discord": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Publish new status": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a post": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "if - fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Short": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Long": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if - fail": {
+      "main": [
+        [
+          {
+            "node": "Wait Long",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Commit": {
+      "main": [
+        [
+          {
+            "node": "Wait Short",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "telegram": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Store": {
+      "main": [
+        [
+          {
+            "node": "Debug Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Fox World",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Fox US Politics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger3": {
+      "main": [
+        [
+          {
+            "node": "RSS NASA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger4": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "94e4858a-dc70-4d59-ad8a-1256c65ee03c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4d9b5176904a7ad3adb817dfcf3ed0c7ce744108f936c17d31d5bb74b7b855c2"
+  },
+  "id": "PfCu2HntkgzSzrTN",
+  "tags": []
+}
