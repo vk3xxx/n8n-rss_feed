@@ -44,45 +44,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// Data transformation and validation for social media nodes\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    // Ensure we have the required structure\n    const text = item.json?.text || item.json?.content || 'No content available';\n    \n    // Safely extract existing fields without spread syntax\n    const existingFields = {};\n    if (item.json && typeof item.json === 'object') {\n      Object.keys(item.json).forEach(key => {\n        if (item.json[key] !== undefined && item.json[key] !== null) {\n          existingFields[key] = item.json[key];\n        }\n      });\n    }\n    \n    // Create a clean, validated data structure\n    const cleanItem = {\n      json: {\n        text: text,\n        title: existingFields.title || 'RSS Article',\n        link: existingFields.link || '',\n        dedupe_key: existingFields.dedupe_key || '',\n        content: text,\n        // Add all existing fields safely\n        ...existingFields\n      }\n    };\n    \n    out.push(cleanItem);\n  } catch (error) {\n    console.error('Error processing item:', error, item);\n    // Skip problematic items but continue processing\n    continue;\n  }\n}\n\nreturn out;\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -320,
-        160
-      ],
-      "id": "data-transform",
-      "name": "Data Transform"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Final data validation and sanitization for social media nodes\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    // Ensure we have a valid item structure\n    if (!item || typeof item !== 'object') {\n      console.log('Skipping invalid item:', item);\n      continue;\n    }\n    \n    // Ensure json property exists and is an object\n    if (!item.json || typeof item.json !== 'object') {\n      console.log('Skipping item without valid json:', item);\n      continue;\n    }\n    \n    // Extract and validate required fields\n    const text = String(item.json.text || item.json.content || 'RSS Article Update');\n    const title = String(item.json.title || 'RSS Article');\n    const link = String(item.json.link || '');\n    const dedupe_key = String(item.json.dedupe_key || '');\n    \n    // Create a completely clean, validated item\n    const validatedItem = {\n      json: {\n        text: text,\n        title: title,\n        link: link,\n        dedupe_key: dedupe_key,\n        content: text,\n        // Only include safe, string-based fields\n        ...Object.fromEntries(\n          Object.entries(item.json)\n            .filter(([key, value]) => \n              value !== undefined && \n              value !== null && \n              typeof value === 'string' &&\n              key !== 'text' && \n              key !== 'title' && \n              key !== 'link' && \n              key !== 'dedupe_key' && \n              key !== 'content'\n            )\n        )\n      }\n    };\n    \n    // Log the validated item for debugging\n    console.log('Validated item:', {\n      title: validatedItem.json.title,\n      text_length: validatedItem.json.text.length,\n      has_dedupe_key: !!validatedItem.json.dedupe_key\n    });\n    \n    out.push(validatedItem);\n  } catch (error) {\n    console.error('Error validating item:', error, item);\n    // Skip problematic items but continue processing\n    continue;\n  }\n}\n\nconsole.log(`Data validation complete: ${out.length} items ready for social media`);\nreturn out;\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -144,
-        160
-      ],
-      "id": "data-validation",
-      "name": "Data Validation"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Debug: Log the exact data structure being sent to social media nodes\nconst items = await $input.all();\n\nconsole.log('=== DEBUG: Data going to social media nodes ===');\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  console.log(`Item ${i + 1}:`, {\n    has_json: !!item.json,\n    json_type: typeof item.json,\n    json_keys: item.json ? Object.keys(item.json) : 'none',\n    text_value: item.json?.text,\n    text_type: typeof item.json?.text,\n    content_value: item.json?.content,\n    content_type: typeof item.json?.content\n  });\n  \n  // Also log the full structure for the first item\n  if (i === 0) {\n    console.log('Full first item structure:', JSON.stringify(item, null, 2));\n  }\n}\nconsole.log('=== END DEBUG ===');\n\nreturn items;\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -80,
-        160
-      ],
-      "id": "debug-final",
-      "name": "Debug Final"
-    },
-    {
-      "parameters": {
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
@@ -241,7 +202,7 @@
     },
     {
       "parameters": {
-        "postText": "={{ $json.text || $json.content || 'RSS Article Update' }}"
+        "postText": "={{ $json.text }}"
       },
       "type": "@muench-dev/n8n-nodes-bluesky.bluesky",
       "typeVersion": 2,
@@ -262,7 +223,7 @@
     {
       "parameters": {
         "authentication": "webhook",
-        "content": "={{ $json.text || $json.content || 'RSS Article Update' }}",
+        "content": "={{ $json.text }}",
         "options": {}
       },
       "type": "n8n-nodes-base.discord",
@@ -274,7 +235,7 @@
       "id": "c9f9f0bb-3d93-429b-9b98-b96959635d17",
       "name": "Discord",
       "webhookId": "7f532abc-66ab-46c0-8779-acd3f8d69520",
-              "credentials": {
+      "credentials": {
         "discordWebhookApi": {
           "id": "rqhLWsZ3P4OJnvDI",
           "name": "Discord Webhook account"
@@ -285,7 +246,7 @@
     {
       "parameters": {
         "url": "https://masto.supes.com",
-        "text": "={{ $json.text || $json.content || 'RSS Article Update' }}",
+        "text": "={{ $json.text }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-mastodon.mastodon",
@@ -398,7 +359,7 @@
     {
       "parameters": {
         "chatId": "-1002899637373",
-        "text": "={{ $json.text || $json.content || 'RSS Article Update' }}",
+        "text": "={{ $json.text }}",
         "additionalFields": {
           "appendAttribution": false,
           "disable_notification": false
@@ -410,7 +371,7 @@
         -144,
         736
       ],
-      "id": "a8db2230-8c5a-4c12-9050-0ca14161fba5",
+      "id": "a8db2230-3380-4fe4-bd68-46625bf36c4a",
       "name": "telegram",
       "webhookId": "f1383b21-5735-4c12-9050-0ca14161fba5",
       "credentials": {
@@ -604,7 +565,22 @@
       "main": [
         [
           {
-            "node": "Data Transform",
+            "node": "Publish new status",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "telegram",
             "type": "main",
             "index": 0
           }
@@ -667,38 +643,40 @@
         []
       ]
     },
-    "Discord": {
+    "Basic LLM Chain": {
       "main": [
         [
           {
-            "node": "Merge1",
+            "node": "Publish new status",
             "type": "main",
-            "index": 2
-          }
-        ]
-      ]
-    },
-    "Publish new status": {
-      "main": [
-        [
+            "index": 0
+          },
           {
-            "node": "Merge1",
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "telegram",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
+    "Discord": {
+      "main": []
+    },
+    "Publish new status": {
+      "main": []
+    },
     "Create a post": {
-      "main": [
-        [
-          {
-            "node": "Merge1",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
+      "main": []
     },
     "Merge1": {
       "main": [
@@ -763,15 +741,7 @@
       ]
     },
     "telegram": {
-      "main": [
-        [
-          {
-            "node": "Merge1",
-            "type": "main",
-            "index": 3
-          }
-        ]
-      ]
+      "main": []
     },
     "Store": {
       "main": [
@@ -794,54 +764,6 @@
           },
           {
             "node": "If",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Data Transform": {
-      "main": [
-        [
-          {
-            "node": "Data Validation",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Data Validation": {
-      "main": [
-        [
-          {
-            "node": "Debug Final",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Debug Final": {
-      "main": [
-        [
-          {
-            "node": "Publish new status",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create a post",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Discord",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "telegram",
             "type": "main",
             "index": 0
           }
