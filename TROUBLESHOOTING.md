@@ -14,28 +14,53 @@ This error occurs when the Mastodon node (or other social media nodes) receives 
 
 **What Was Fixed:**
 1. **Added Data Transformation Node**: A new "Data Transform" node was added after the LLM Chain to ensure data structure consistency
-2. **Improved Error Handling**: Added fallback values for text fields in all social media nodes
-3. **Data Validation**: The transformation node validates and cleans the data before sending to social media nodes
+2. **Added Data Validation Node**: A robust validation node that sanitizes data before sending to social media nodes
+3. **Added Debug Final Node**: A debugging node that logs the exact data structure being sent to social media nodes
+4. **Improved Error Handling**: Added fallback values for text fields in all social media nodes
+5. **Safe Data Processing**: Eliminated unsafe spread syntax and added type checking
 
 **New Flow:**
 ```
-LLM Chain → Data Transform → Social Media Nodes
+LLM Chain → Data Transform → Data Validation → Debug Final → Social Media Nodes
 ```
 
-**Data Transformation Logic:**
-```javascript
-// Ensures required structure exists
-const text = item.json?.text || item.json?.content || 'No content available';
+**Key Improvements:**
+- **Type Safety**: All data is converted to strings before processing
+- **Structure Validation**: Ensures json property exists and is an object
+- **Field Filtering**: Only includes safe, string-based fields
+- **Comprehensive Logging**: Shows exactly what data is being processed
+- **Error Isolation**: Skips problematic items without crashing the workflow
 
-// Creates clean, validated data structure
-const cleanItem = {
+**Data Validation Logic:**
+```javascript
+// Final data validation and sanitization for social media nodes
+const text = String(item.json.text || item.json.content || 'RSS Article Update');
+const title = String(item.json.title || 'RSS Article');
+const link = String(item.json.link || '');
+const dedupe_key = String(item.json.dedupe_key || '');
+
+// Create a completely clean, validated item
+const validatedItem = {
   json: {
     text: text,
-    title: item.json?.title || 'RSS Article',
-    link: item.json?.link || '',
-    dedupe_key: item.json?.dedupe_key || '',
+    title: title,
+    link: link,
+    dedupe_key: dedupe_key,
     content: text,
-    ...item.json
+    // Only include safe, string-based fields
+    ...Object.fromEntries(
+      Object.entries(item.json)
+        .filter(([key, value]) => 
+          value !== undefined && 
+          value !== null && 
+          typeof value === 'string' &&
+          key !== 'text' && 
+          key !== 'title' && 
+          key !== 'link' && 
+          key !== 'dedupe_key' && 
+          key !== 'content'
+        )
+    )
   }
 };
 ```
@@ -60,7 +85,9 @@ All social media nodes now have fallback values:
 1. **Import the updated workflow** into n8n
 2. **Run a test execution** with the manual trigger
 3. **Check the execution logs** for any remaining errors
-4. **Verify data flow** through the Data Transform node
+4. **Verify data flow** through all validation nodes:
+   - Data Transform → Data Validation → Debug Final → Social Media Nodes
+5. **Look for debug logs** showing the exact data structure being processed
 
 ## Prevention Tips
 
@@ -72,8 +99,10 @@ All social media nodes now have fallback values:
 
 ## If Errors Persist
 
-1. Check the **Data Transform node logs** for data structure issues
-2. Verify **RSS feed data** is in expected format
-3. Test **individual social media nodes** with simple data
-4. Review **n8n version compatibility** (tested with 1.106.3)
-5. Check **credentials and API endpoints** are correct
+1. Check the **Debug Final node logs** for the exact data structure being sent to social media nodes
+2. Verify **Data Validation node logs** for any items being skipped
+3. Check **Data Transform node logs** for initial transformation issues
+4. Verify **RSS feed data** is in expected format
+5. Test **individual social media nodes** with simple data
+6. Review **n8n version compatibility** (tested with 1.106.3)
+7. Check **credentials and API endpoints** are correct
