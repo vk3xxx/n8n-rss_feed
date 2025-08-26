@@ -44,6 +44,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Data transformation and validation for social media nodes\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    // Ensure we have the required structure\n    const text = item.json?.text || item.json?.content || 'No content available';\n    \n    // Create a clean, validated data structure\n    const cleanItem = {\n      json: {\n        text: text,\n        title: item.json?.title || 'RSS Article',\n        link: item.json?.link || '',\n        dedupe_key: item.json?.dedupe_key || '',\n        // Ensure all required fields are present\n        content: text,\n        // Add any other fields that might be needed\n        ...item.json\n      }\n    };\n    \n    out.push(cleanItem);\n  } catch (error) {\n    console.error('Error processing item:', error, item);\n    // Skip problematic items but continue processing\n    continue;\n  }\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        160
+      ],
+      "id": "data-transform",
+      "name": "Data Transform"
+    },
+    {
+      "parameters": {
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
@@ -202,7 +215,7 @@
     },
     {
       "parameters": {
-        "postText": "={{ $json.text }}"
+        "postText": "={{ $json.text || $json.content || 'RSS Article Update' }}"
       },
       "type": "@muench-dev/n8n-nodes-bluesky.bluesky",
       "typeVersion": 2,
@@ -223,7 +236,7 @@
     {
       "parameters": {
         "authentication": "webhook",
-        "content": "={{ $json.text }}",
+        "content": "={{ $json.text || $json.content || 'RSS Article Update' }}",
         "options": {}
       },
       "type": "n8n-nodes-base.discord",
@@ -235,7 +248,7 @@
       "id": "c9f9f0bb-3d93-429b-9b98-b96959635d17",
       "name": "Discord",
       "webhookId": "7f532abc-66ab-46c0-8779-acd3f8d69520",
-      "credentials": {
+              "credentials": {
         "discordWebhookApi": {
           "id": "rqhLWsZ3P4OJnvDI",
           "name": "Discord Webhook account"
@@ -246,7 +259,7 @@
     {
       "parameters": {
         "url": "https://masto.supes.com",
-        "text": "={{ $json.text }}",
+        "text": "={{ $json.text || $json.content || 'RSS Article Update' }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-mastodon.mastodon",
@@ -359,7 +372,7 @@
     {
       "parameters": {
         "chatId": "-1002899637373",
-        "text": "={{ $json.text }}",
+        "text": "={{ $json.text || $json.content || 'RSS Article Update' }}",
         "additionalFields": {
           "appendAttribution": false,
           "disable_notification": false
@@ -371,7 +384,7 @@
         -144,
         736
       ],
-      "id": "a8db2230-3380-4fe4-bd68-46625bf36c4a",
+      "id": "a8db2230-8c5a-4c12-9050-0ca14161fba5",
       "name": "telegram",
       "webhookId": "f1383b21-5735-4c12-9050-0ca14161fba5",
       "credentials": {
@@ -565,22 +578,7 @@
       "main": [
         [
           {
-            "node": "Publish new status",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create a post",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Discord",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "telegram",
+            "node": "Data Transform",
             "type": "main",
             "index": 0
           }
@@ -770,6 +768,32 @@
           },
           {
             "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Transform": {
+      "main": [
+        [
+          {
+            "node": "Publish new status",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "telegram",
             "type": "main",
             "index": 0
           }
