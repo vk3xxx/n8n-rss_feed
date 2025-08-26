@@ -44,6 +44,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Circuit Breaker: Monitor and disable failing nodes temporarily\nconst state = $getWorkflowStaticData('global');\nstate.nodeFailures = state.nodeFailures || {};\n\nconst NOW = Date.now();\nconst DISABLE_DURATION = 3 * 60 * 60 * 1000; // 3 hours\n\n// Check which nodes are currently disabled\nconst disabledNodes = {};\nfor (const [nodeId, failureTime] of Object.entries(state.nodeFailures)) {\n  if (NOW - failureTime < DISABLE_DURATION) {\n    disabledNodes[nodeId] = true;\n  } else {\n    // Re-enable after timeout\n    delete state.nodeFailures[nodeId];\n    console.log(`🔄 Circuit breaker: Re-enabling node ${nodeId} after timeout`);\n  }\n}\n\n// Get the current items\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    // Add circuit breaker status to each item\n    const itemWithStatus = {\n      json: {\n        ...item.json,\n        circuitBreaker: {\n          disabledNodes: Object.keys(disabledNodes),\n          timestamp: NOW,\n          totalDisabled: Object.keys(disabledNodes).length\n        }\n      }\n    };\n    \n    out.push(itemWithStatus);\n  } catch (error) {\n    console.error('Error in circuit breaker:', error);\n    out.push(item);\n  }\n}\n\n// Log circuit breaker status\nif (Object.keys(disabledNodes).length > 0) {\n  console.log(`🚫 Circuit breaker: ${Object.keys(disabledNodes).length} nodes currently disabled:`, Object.keys(disabledNodes));\n} else {\n  console.log('✅ Circuit breaker: All nodes enabled');\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        160
+      ],
+      "id": "circuit-breaker",
+      "name": "Circuit Breaker"
+    },
+    {
+      "parameters": {
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
@@ -278,6 +291,19 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Failure Detection: Monitor Mastodon node and update circuit breaker on failure\nconst state = $getWorkflowStaticData('global');\nstate.nodeFailures = state.nodeFailures || {};\n\nconst NOW = Date.now();\nconst items = await $input.all();\nconst out = [];\n\n// Check if this execution had errors\nconst hasErrors = $execution?.data?.error || false;\n\nif (hasErrors) {\n  // Mastodon node failed - disable it for 3 hours\n  const mastodonNodeId = 'a4ce2e85-be84-4c86-a8b5-dbe7857b5a4a'; // Publish new status node ID\n  state.nodeFailures[mastodonNodeId] = NOW;\n  \n  console.log(`🚨 Mastodon node failed - disabling for 3 hours. Error: ${$execution?.data?.error?.message || 'Unknown error'}`);\n  \n  // Still pass through the item but mark it as failed\n  for (const item of items) {\n    out.push({\n      json: {\n        ...item.json,\n        mastodonStatus: 'FAILED_DISABLED',\n        failureTime: NOW,\n        disabledUntil: NOW + (3 * 60 * 60 * 1000)\n      }\n    });\n  }\n} else {\n  // Mastodon node succeeded\n  console.log('✅ Mastodon node succeeded');\n  \n  for (const item of items) {\n    out.push({\n      json: {\n        ...item.json,\n        mastodonStatus: 'SUCCESS'\n      }\n    });\n  }\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        160
+      ],
+      "id": "mastodon-monitor",
+      "name": "Mastodon Monitor"
     },
     {
       "parameters": {
@@ -578,6 +604,17 @@
       "main": [
         [
           {
+            "node": "Circuit Breaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Circuit Breaker": {
+      "main": [
+        [
+          {
             "node": "Publish new status",
             "type": "main",
             "index": 0
@@ -676,10 +713,11 @@
     "Create a post": {
       "main": []
     },
-    "Merge1": {
+    "Mastodon Monitor": {
       "main": [
         [
           {
+            "node": "Publish new status",
             "node": "if - fail",
             "type": "main",
             "index": 0
