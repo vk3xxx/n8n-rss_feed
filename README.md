@@ -37,8 +37,15 @@ This n8n workflow automatically posts RSS articles to multiple social media plat
 ## Flow Architecture
 
 ```
-RSS Feeds → Store (Deduplication) → Debug Log → Merge + If → Processing → Social Media
+RSS Feeds → Store (Deduplication) → Debug Log → Merge + If → LLM Chain → Data Transform → Social Media
 ```
+
+**Key Components:**
+- **Store**: Handles deduplication and prevents reposts
+- **Debug Log**: Shows processing statistics and article details
+- **LLM Chain**: Generates social media content using AI
+- **Data Transform**: Ensures data structure consistency and prevents errors
+- **Social Media**: Posts to Mastodon, Bluesky, Discord, and Telegram
 
 ## Configuration
 
