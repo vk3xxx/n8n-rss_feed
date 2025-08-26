@@ -202,6 +202,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Clean data structure to prevent spread syntax errors in social media nodes\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    // Ensure we have clean, simple data structure\n    const cleanItem = {\n      json: {\n        // Extract and clean the content\n        content: String(item.json?.content || item.json?.description || ''),\n        // Keep other essential fields\n        title: String(item.json?.title || ''),\n        link: String(item.json?.link || ''),\n        dedupe_key: String(item.json?.dedupe_key || ''),\n        // Only include simple string fields, avoid complex objects\n        pubDate: item.json?.pubDate || item.json?.isoDate || '',\n        source: item.json?.source || ''\n      }\n    };\n    \n    out.push(cleanItem);\n  } catch (error) {\n    console.error('Error cleaning item:', error, item);\n    // Skip problematic items but continue processing\n    continue;\n  }\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        208
+      ],
+      "id": "data-cleaner",
+      "name": "Data Cleaner"
+    },
+    {
+      "parameters": {
         "postText": "={{ $json.text }}"
       },
       "type": "@muench-dev/n8n-nodes-bluesky.bluesky",
@@ -635,7 +648,7 @@
       "main": [
         [
           {
-            "node": "Basic LLM Chain",
+            "node": "Data Cleaner",
             "type": "main",
             "index": 0
           }
@@ -643,26 +656,11 @@
         []
       ]
     },
-    "Basic LLM Chain": {
+    "Data Cleaner": {
       "main": [
         [
           {
-            "node": "Publish new status",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Create a post",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Discord",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "telegram",
+            "node": "Basic LLM Chain",
             "type": "main",
             "index": 0
           }
