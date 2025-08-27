@@ -30,7 +30,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Please summarise into social media post, combine with the short URL and make sure it makes sense.  Maximum charachters 200. Go!! {{ $json.content }} {{ $('Tiny').item.json.data.tiny_url }}",
+        "text": "=Create an engaging social media post based on this article. Use the enhanced content and include the original URL for rich preview. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $json.originalUrl || $json.link }}",
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
@@ -41,6 +41,19 @@
       ],
       "id": "cfd1521c-189a-4f00-9321-20490cc61799",
       "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Open Graph Metadata Fetcher for rich article previews\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    const originalUrl = item.json.link || '';\n    const tinyUrl = item.json.tiny_url || originalUrl;\n    \n    if (!originalUrl) {\n      console.log('No original URL found, skipping metadata fetch');\n      out.push(item);\n      continue;\n    }\n    \n    // Fetch the article page to extract Open Graph metadata\n    console.log(`Fetching metadata for: ${originalUrl}`);\n    \n    try {\n      const response = await fetch(originalUrl, {\n        method: 'GET',\n        headers: {\n          'User-Agent': 'Mozilla/5.0 (compatible; RSS-Bot/1.0; +https://supes.com/rss-bot)'\n        },\n        timeout: 10000 // 10 second timeout\n      });\n      \n      if (!response.ok) {\n        throw new Error(`HTTP ${response.status}`);\n      }\n      \n      const html = await response.text();\n      \n      // Extract Open Graph metadata\n      const ogTitle = html.match(/<meta property=\"og:title\" content=\"([^\"]*)\"/i)?.[1] || \n                     html.match(/<title[^>]*>([^<]+)<\\/title>/i)?.[1] || \n                     item.json.title || 'Article';\n      \n      const ogDescription = html.match(/<meta property=\"og:description\" content=\"([^\"]*)\"/i)?.[1] || \n                           html.match(/<meta name=\"description\" content=\"([^\"]*)\"/i)?.[1] || \n                           item.json.contentSnippet || \n                           (item.json.content || '').replace(/<[^>]*>/g, '').substring(0, 200) || \n                           'Read more...';\n      \n      const ogImage = html.match(/<meta property=\"og:image\" content=\"([^\"]*)\"/i)?.[1] || \n                     html.match(/<meta name=\"twitter:image\" content=\"([^\"]*)\"/i)?.[1] || \n                     null;\n      \n      const ogUrl = html.match(/<meta property=\"og:url\" content=\"([^\"]*)\"/i)?.[1] || originalUrl;\n      \n      // Clean up the extracted data\n      const cleanTitle = ogTitle.replace(/&quot;/g, '\"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();\n      const cleanDescription = ogDescription.replace(/&quot;/g, '\"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();\n      \n      // Create enhanced item with Open Graph data\n      const enhancedItem = {\n        json: {\n          ...item.json,\n          // Original data\n          originalUrl: originalUrl,\n          tinyUrl: tinyUrl,\n          // Open Graph metadata\n          ogTitle: cleanTitle,\n          ogDescription: cleanDescription,\n          ogImage: ogImage,\n          ogUrl: ogUrl,\n          // Enhanced content for LLM\n          enhancedContent: `Title: ${cleanTitle}\\n\\nDescription: ${cleanDescription}\\n\\nOriginal URL: ${originalUrl}`,\n          // Metadata for social media formatting\n          hasImage: !!ogImage,\n          metadata: {\n            title: cleanTitle,\n            description: cleanDescription,\n            image: ogImage,\n            url: originalUrl,\n            tinyUrl: tinyUrl,\n            fetchedAt: new Date().toISOString()\n          }\n        }\n      };\n      \n      console.log(`✅ Metadata fetched for: ${cleanTitle}`);\n      console.log(`   Image: ${ogImage ? 'Yes' : 'No'}`);\n      console.log(`   Description length: ${cleanDescription.length}`);\n      \n      out.push(enhancedItem);\n      \n    } catch (fetchError) {\n      console.error(`❌ Failed to fetch metadata for ${originalUrl}:`, fetchError.message);\n      \n      // Fallback to original item with basic enhancement\n      const fallbackItem = {\n        json: {\n          ...item.json,\n          originalUrl: originalUrl,\n          tinyUrl: tinyUrl,\n          ogTitle: item.json.title || 'Article',\n          ogDescription: (item.json.contentSnippet || item.json.content || '').replace(/<[^>]*>/g, '').substring(0, 200) || 'Read more...',\n          ogImage: null,\n          ogUrl: originalUrl,\n          enhancedContent: `Title: ${item.json.title || 'Article'}\\n\\nContent: ${(item.json.contentSnippet || '').substring(0, 300)}\\n\\nURL: ${originalUrl}`,\n          hasImage: false,\n          metadata: {\n            title: item.json.title || 'Article',\n            description: (item.json.contentSnippet || '').substring(0, 200),\n            image: null,\n            url: originalUrl,\n            tinyUrl: tinyUrl,\n            fetchedAt: new Date().toISOString(),\n            fetchError: fetchError.message\n          }\n        }\n      };\n      \n      out.push(fallbackItem);\n    }\n    \n  } catch (error) {\n    console.error('Error processing item for metadata:', error, item);\n    out.push(item);\n  }\n}\n\nconsole.log(`Processed ${out.length} items for Open Graph metadata`);\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        288
+      ],
+      "id": "og-metadata-fetcher",
+      "name": "OG Metadata Fetcher"
     },
     {
       "parameters": {
@@ -259,7 +272,7 @@
     {
       "parameters": {
         "url": "https://masto.supes.com",
-        "text": "={{ $json.text }}",
+        "text": "={{ $json.text }}\\n\\n{{ $json.originalUrl || $json.link }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-mastodon.mastodon",
@@ -773,6 +786,17 @@
       ]
     },
     "Data Cleaner": {
+      "main": [
+        [
+          {
+            "node": "OG Metadata Fetcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OG Metadata Fetcher": {
       "main": [
         [
           {
