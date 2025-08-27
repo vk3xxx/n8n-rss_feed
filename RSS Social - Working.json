@@ -1,15 +1,15 @@
 {
-  "name": "RSS Post",
+  "name": "RSS Social - Working",
   "nodes": [
     {
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -2064,
-        400
+        0,
+        528
       ],
-      "id": "87a425f4-b78b-47a4-9698-747a2f1e9c8a",
+      "id": "0999ced3-7b71-4a55-9ca3-3771156cd457",
       "name": "When clicking ‘Execute workflow’"
     },
     {
@@ -20,10 +20,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.1,
       "position": [
-        -1840,
-        16
+        224,
+        144
       ],
-      "id": "2050e307-76b0-4b0d-9a8e-401ac7e38c38",
+      "id": "726f6523-d415-4b6e-9fc2-a0fffce407c2",
       "name": "RSS Read",
       "alwaysOutputData": false
     },
@@ -36,24 +36,11 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.7,
       "position": [
-        -496,
-        160
+        1568,
+        288
       ],
-      "id": "9664ee09-9d02-42fe-a10a-84737098d56b",
+      "id": "cfd1521c-189a-4f00-9321-20490cc61799",
       "name": "Basic LLM Chain"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Enhanced Circuit Breaker: Monitor ALL nodes in the workflow comprehensively\nconst state = $getWorkflowStaticData('global');\nstate.nodeFailures = state.nodeFailures || {};\nstate.nodeStats = state.nodeStats || {};\nstate.nodeHealth = state.nodeHealth || {};\n\nconst NOW = Date.now();\nconst DISABLE_DURATION = 3 * 60 * 60 * 1000; // 3 hours\nconst MAX_FAILURES = 3; // Disable after 3 consecutive failures\n\n// Get current execution context\nconst currentNodeId = $execution?.data?.nodeId || 'unknown';\nconst currentNodeName = $execution?.data?.nodeName || 'unknown';\n\n// Update execution tracking\nstate.lastExecution = state.lastExecution || {};\nstate.lastExecution[currentNodeId] = {\n  timestamp: NOW,\n  nodeName: currentNodeName,\n  success: true,\n  executionTime: NOW\n};\n\n// Update node health\nif (!state.nodeHealth[currentNodeId]) {\n  state.nodeHealth[currentNodeId] = {\n    nodeName: currentNodeName,\n    totalExecutions: 0,\n    successfulExecutions: 0,\n    failedExecutions: 0,\n    lastSuccess: NOW,\n    lastFailure: null,\n    healthScore: 100\n  };\n}\n\nstate.nodeHealth[currentNodeId].totalExecutions++;\nstate.nodeHealth[currentNodeId].successfulExecutions++;\nstate.nodeHealth[currentNodeId].lastSuccess = NOW;\n\n// Check which nodes are currently disabled\nconst disabledNodes = {};\nfor (const [nodeId, failureData] of Object.entries(state.nodeFailures)) {\n  if (NOW - failureData.lastFailure < DISABLE_DURATION) {\n    disabledNodes[nodeId] = failureData;\n  } else {\n    // Re-enable after timeout\n    delete state.nodeFailures[nodeId];\n    console.log(`🔄 Circuit breaker: Re-enabling node ${nodeId} (${failureData.nodeName}) after timeout`);\n    \n    // Reset health score\n    if (state.nodeHealth[nodeId]) {\n      state.nodeHealth[nodeId].healthScore = Math.min(100, state.nodeHealth[nodeId].healthScore + 20);\n    }\n  }\n}\n\n// Get the current items\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    // Add comprehensive circuit breaker status to each item\n    const itemWithStatus = {\n      json: {\n        ...item.json,\n        circuitBreaker: {\n          currentNodeId: currentNodeId,\n          currentNodeName: currentNodeName,\n          disabledNodes: Object.keys(disabledNodes),\n          disabledNodeDetails: disabledNodes,\n          timestamp: NOW,\n          totalDisabled: Object.keys(disabledNodes).length,\n          nodeStats: state.nodeStats,\n          nodeHealth: state.nodeHealth,\n          lastExecution: state.lastExecution,\n          workflowStatus: {\n            totalNodes: Object.keys(state.nodeHealth).length,\n            healthyNodes: Object.keys(state.nodeHealth).filter(id => state.nodeHealth[id].healthScore >= 80).length,\n            warningNodes: Object.keys(state.nodeHealth).filter(id => state.nodeHealth[id].healthScore >= 50 && state.nodeHealth[id].healthScore < 80).length,\n            criticalNodes: Object.keys(state.nodeHealth).filter(id => state.nodeHealth[id].healthScore < 50).length\n          }\n        }\n      }\n    };\n    \n    out.push(itemWithStatus);\n  } catch (error) {\n    console.error('Error in circuit breaker:', error);\n    out.push(item);\n  }\n}\n\n// Log comprehensive circuit breaker status\nif (Object.keys(disabledNodes).length > 0) {\n  console.log(`🚫 Circuit breaker: ${Object.keys(disabledNodes).length} nodes currently disabled:`);\n  for (const [nodeId, failureData] of Object.entries(disabledNodes)) {\n    console.log(`   - ${nodeId} (${failureData.nodeName}): ${failureData.failureCount} failures, disabled until ${new Date(failureData.lastFailure + DISABLE_DURATION).toISOString()}`);\n  }\n} else {\n  console.log('✅ Circuit breaker: All nodes enabled');\n}\n\n// Log workflow health summary\nconst healthSummary = {\n  total: Object.keys(state.nodeHealth).length,\n  healthy: Object.keys(state.nodeHealth).filter(id => state.nodeHealth[id].healthScore >= 80).length,\n  warning: Object.keys(state.nodeHealth).filter(id => state.nodeHealth[id].healthScore >= 50 && state.nodeHealth[id].healthScore < 80).length,\n  critical: Object.keys(state.nodeHealth).filter(id => state.nodeHealth[id].healthScore < 50).length\n};\n\nconsole.log(`📊 Workflow Health: ${healthSummary.healthy} healthy, ${healthSummary.warning} warning, ${healthSummary.critical} critical out of ${healthSummary.total} total nodes`);\nconsole.log(`📊 Circuit breaker: Node ${currentNodeId} (${currentNodeName}) executing successfully`);\n\nreturn out;\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -320,
-        160
-      ],
-      "id": "circuit-breaker",
-      "name": "Circuit Breaker"
     },
     {
       "parameters": {
@@ -62,10 +49,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        -432,
-        384
+        1632,
+        512
       ],
-      "id": "c92e60c6-8688-47d6-97f2-bb811eec2723",
+      "id": "281f9905-ae78-459d-9247-0344e7abea14",
       "name": "OpenRouter Chat Model",
       "credentials": {
         "openRouterApi": {
@@ -102,10 +89,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1168,
-        288
+        896,
+        416
       ],
-      "id": "d8a79e1c-daaf-4951-a733-3c07bb9262a6",
+      "id": "5c72ea1b-684f-4bb1-bd3b-ee97964669e2",
       "name": "Tiny"
     },
     {
@@ -117,10 +104,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
       "position": [
-        -944,
-        208
+        1120,
+        336
       ],
-      "id": "d9a30326-de41-4be8-9b34-9f6718bc6d3a",
+      "id": "023d2bcf-5d10-4078-8561-240da1958bd7",
       "name": "Merge"
     },
     {
@@ -131,10 +118,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.1,
       "position": [
-        -1840,
-        208
+        224,
+        336
       ],
-      "id": "d4eaabaf-b3a3-4de8-a5a3-11093487a7bd",
+      "id": "e7ea54ee-601a-4bcf-94f3-3c6a86592d79",
       "name": "RSS NASA"
     },
     {
@@ -145,10 +132,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.1,
       "position": [
-        -1840,
-        592
+        224,
+        720
       ],
-      "id": "e009d078-0589-4b19-9d0c-c2bc3160bf5f",
+      "id": "9fbb432f-e5a2-4008-b364-290e30b07866",
       "name": "Fox US Politics"
     },
     {
@@ -159,10 +146,10 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.1,
       "position": [
-        -1840,
-        784
+        224,
+        912
       ],
-      "id": "5e073383-b027-4773-bffa-334b134a244d",
+      "id": "cd00996e-522a-472f-815c-442b0672df01",
       "name": "Fox World"
     },
     {
@@ -193,10 +180,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1392,
-        304
+        688,
+        640
       ],
-      "id": "72651f91-a255-450a-8336-26f827e3b60a",
+      "id": "26edef42-b6ad-4560-9957-e6577791f0c2",
       "name": "If"
     },
     {
@@ -207,10 +194,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
       "position": [
-        -720,
-        208
+        1344,
+        336
       ],
-      "id": "6e77b5bb-23cc-42b4-9ec3-a5cb30067138",
+      "id": "002f4c97-d869-44cf-98f7-85198ddfac1b",
       "name": "Split In Batches"
     },
     {
@@ -220,10 +207,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -600,
-        208
+        1472,
+        336
       ],
-      "id": "data-cleaner",
+      "id": "26ad0d4a-661e-4418-b28c-4b103a11d4ec",
       "name": "Data Cleaner"
     },
     {
@@ -233,10 +220,10 @@
       "type": "@muench-dev/n8n-nodes-bluesky.bluesky",
       "typeVersion": 2,
       "position": [
-        -144,
-        352
+        1920,
+        480
       ],
-      "id": "8c220137-89c9-4974-a495-a230a58d1ae9",
+      "id": "56dad020-a75f-4aaf-a6a5-bfb829e3b0eb",
       "name": "Create a post",
       "credentials": {
         "blueskyApi": {
@@ -255,10 +242,10 @@
       "type": "n8n-nodes-base.discord",
       "typeVersion": 2,
       "position": [
-        -144,
-        544
+        1920,
+        672
       ],
-      "id": "c9f9f0bb-3d93-429b-9b98-b96959635d17",
+      "id": "babfdefd-b5b9-471a-937e-8f48bc87501d",
       "name": "Discord",
       "webhookId": "7f532abc-66ab-46c0-8779-acd3f8d69520",
       "credentials": {
@@ -278,10 +265,10 @@
       "type": "n8n-nodes-mastodon.mastodon",
       "typeVersion": 1,
       "position": [
-        -144,
-        160
+        1920,
+        288
       ],
-      "id": "a4ce2e85-be84-4c86-a8b5-dbe7857b5a4a",
+      "id": "1a44b737-aba6-491f-af15-c43648fb51e5",
       "name": "Publish new status",
       "retryOnFail": false,
       "credentials": {
@@ -294,32 +281,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// Comprehensive Failure Detection: Monitor Mastodon node and update circuit breaker\nconst state = $getWorkflowStaticData('global');\nstate.nodeFailures = state.nodeFailures || {};\nstate.nodeStats = state.nodeStats || {};\nstate.nodeHealth = state.nodeHealth || {};\n\nconst NOW = Date.now();\nconst currentNodeId = 'a4ce2e85-be84-4c86-a8b5-dbe7857b5a4a'; // Mastodon node ID\nconst currentNodeName = 'Publish new status';\n\n// Check if this execution had errors\nconst hasErrors = $execution?.data?.error || false;\n\nif (hasErrors) {\n  // Mastodon node failed - update comprehensive failure tracking\n  if (!state.nodeFailures[currentNodeId]) {\n    state.nodeFailures[currentNodeId] = {\n      nodeName: currentNodeName,\n      failureCount: 0,\n      firstFailure: NOW,\n      lastFailure: NOW,\n      errors: [],\n      consecutiveFailures: 0,\n      totalDowntime: 0\n    };\n  }\n  \n  state.nodeFailures[currentNodeId].failureCount++;\n  state.nodeFailures[currentNodeId].lastFailure = NOW;\n  state.nodeFailures[currentNodeId].consecutiveFailures++;\n  state.nodeFailures[currentNodeId].errors.push({\n    timestamp: NOW,\n    message: $execution?.data?.error?.message || 'Unknown error',\n    stackTrace: $execution?.data?.error?.stack || 'No stack trace',\n    errorType: $execution?.data?.error?.name || 'Error'\n  });\n  \n  // Update node health\n  if (!state.nodeHealth[currentNodeId]) {\n    state.nodeHealth[currentNodeId] = {\n      nodeName: currentNodeName,\n      totalExecutions: 0,\n      successfulExecutions: 0,\n      failedExecutions: 0,\n      lastSuccess: null,\n      lastFailure: NOW,\n      healthScore: 100\n    };\n  }\n  \n  state.nodeHealth[currentNodeId].totalExecutions++;\n  state.nodeHealth[currentNodeId].failedExecutions++;\n  state.nodeHealth[currentNodeId].lastFailure = NOW;\n  \n  // Calculate health score (decreases with failures)\n  const failureRate = state.nodeHealth[currentNodeId].failedExecutions / state.nodeHealth[currentNodeId].totalExecutions;\n  state.nodeHealth[currentNodeId].healthScore = Math.max(0, Math.round((1 - failureRate) * 100));\n  \n  console.log(`🚨 Mastodon node failed (attempt ${state.nodeFailures[currentNodeId].failureCount}): ${$execution?.data?.error?.message || 'Unknown error'}`);\n  console.log(`📊 Health score: ${state.nodeHealth[currentNodeId].healthScore}/100, Consecutive failures: ${state.nodeFailures[currentNodeId].consecutiveFailures}`);\n  \n  // Still pass through the item but mark it as failed\n  const items = await $input.all();\n  const out = [];\n  \n  for (const item of items) {\n    out.push({\n      json: {\n        ...item.json,\n        mastodonStatus: 'FAILED_DISABLED',\n        failureCount: state.nodeFailures[currentNodeId].failureCount,\n        consecutiveFailures: state.nodeFailures[currentNodeId].consecutiveFailures,\n        healthScore: state.nodeHealth[currentNodeId].healthScore,\n        failureTime: NOW,\n        disabledUntil: NOW + (3 * 60 * 60 * 1000),\n        errorDetails: {\n          message: $execution?.data?.error?.message || 'Unknown error',\n          type: $execution?.data?.error?.name || 'Error',\n          timestamp: NOW\n        }\n      }\n    });\n  }\n  \n  return out;\n} else {\n  // Mastodon node succeeded - update success tracking\n  if (!state.nodeStats[currentNodeId]) {\n    state.nodeStats[currentNodeId] = {\n      successCount: 0,\n      failureCount: 0,\n      lastSuccess: NOW,\n      lastFailure: null,\n      totalExecutionTime: 0,\n      averageExecutionTime: 0\n    };\n  }\n  \n  state.nodeStats[currentNodeId].successCount++;\n  state.nodeStats[currentNodeId].lastSuccess = NOW;\n  \n  // Update node health\n  if (!state.nodeHealth[currentNodeId]) {\n    state.nodeHealth[currentNodeId] = {\n      nodeName: currentNodeName,\n      totalExecutions: 0,\n      successfulExecutions: 0,\n      failedExecutions: 0,\n      lastSuccess: NOW,\n      lastFailure: null,\n      healthScore: 100\n    };\n  }\n  \n  state.nodeHealth[currentNodeId].totalExecutions++;\n  state.nodeHealth[currentNodeId].successfulExecutions++;\n  state.nodeHealth[currentNodeId].lastSuccess = NOW;\n  \n  // Reset consecutive failures and improve health score\n  if (state.nodeFailures[currentNodeId]) {\n    state.nodeFailures[currentNodeId].consecutiveFailures = 0;\n  }\n  \n  // Improve health score with success\n  state.nodeHealth[currentNodeId].healthScore = Math.min(100, state.nodeHealth[currentNodeId].healthScore + 5);\n  \n  console.log(`✅ Mastodon node succeeded (total successes: ${state.nodeStats[currentNodeId].successCount}, health score: ${state.nodeHealth[currentNodeId].healthScore}/100)`);\n  \n  // Pass through items normally with success status\n  const items = await $input.all();\n  const out = [];\n  \n  for (const item of items) {\n    out.push({\n      json: {\n        ...item.json,\n        mastodonStatus: 'SUCCESS',\n        successCount: state.nodeStats[currentNodeId].successCount,\n        healthScore: state.nodeHealth[currentNodeId].healthScore,\n        lastSuccess: NOW\n      }\n    });\n  }\n  \n  return out;\n}\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -80,
-        160
-      ],
-      "id": "mastodon-monitor",
-      "name": "Mastodon Monitor"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Comprehensive Failure Detection: Monitor Mastodon node and update circuit breaker\nconst state = $getWorkflowStaticData('global');\nstate.nodeFailures = state.nodeFailures || {};\nstate.nodeStats = state.nodeStats || {};\nstate.nodeHealth = state.nodeHealth || {};\n\nconst NOW = Date.now();\nconst currentNodeId = 'a4ce2e85-be84-4c86-a8b5-dbe7857b5a4a'; // Mastodon node ID\nconst currentNodeName = 'Publish new status';\n\n// Check if this execution had errors\nconst hasErrors = $execution?.data?.error || false;\n\nif (hasErrors) {\n  // Mastodon node failed - update comprehensive failure tracking\n  if (!state.nodeFailures[currentNodeId]) {\n    state.nodeFailures[currentNodeId] = {\n      nodeName: currentNodeName,\n      failureCount: 0,\n      firstFailure: NOW,\n      lastFailure: NOW,\n      errors: [],\n      consecutiveFailures: 0,\n      totalDowntime: 0\n    };\n  }\n  \n  state.nodeFailures[currentNodeId].failureCount++;\n  state.nodeFailures[currentNodeId].lastFailure = NOW;\n  state.nodeFailures[currentNodeId].consecutiveFailures++;\n  state.nodeFailures[currentNodeId].errors.push({\n    timestamp: NOW,\n    message: $execution?.data?.error?.message || 'Unknown error',\n    stackTrace: $execution?.data?.error?.stack || 'No stack trace',\n    errorType: $execution?.data?.error?.name || 'Error'\n  });\n  \n  // Update node health\n  if (!state.nodeHealth[currentNodeId]) {\n    state.nodeHealth[currentNodeId] = {\n      nodeName: currentNodeName,\n      totalExecutions: 0,\n      successfulExecutions: 0,\n      failedExecutions: 0,\n      lastSuccess: null,\n      lastFailure: NOW,\n      healthScore: 100\n    };\n  }\n  \n  state.nodeHealth[currentNodeId].totalExecutions++;\n  state.nodeHealth[currentNodeId].failedExecutions++;\n  state.nodeHealth[currentNodeId].lastFailure = NOW;\n  \n  // Calculate health score (decreases with failures)\n  const failureRate = state.nodeHealth[currentNodeId].failedExecutions / state.nodeHealth[currentNodeId].totalExecutions;\n  state.nodeHealth[currentNodeId].healthScore = Math.max(0, Math.round((1 - failureRate) * 100));\n  \n  console.log(`🚨 Mastodon node failed (attempt ${state.nodeFailures[currentNodeId].failureCount}): ${$execution?.data?.error?.message || 'Unknown error'}`);\n  console.log(`📊 Health score: ${state.nodeHealth[currentNodeId].healthScore}/100, Consecutive failures: ${state.nodeFailures[currentNodeId].consecutiveFailures}`);\n  \n  // Still pass through the item but mark it as failed\n  const items = await $input.all();\n  const out = [];\n  \n  for (const item of items) {\n    out.push({\n      json: {\n        ...item.json,\n        mastodonStatus: 'FAILED_DISABLED',\n        failureCount: state.nodeFailures[currentNodeId].failureCount,\n        consecutiveFailures: state.nodeFailures[currentNodeId].consecutiveFailures,\n        healthScore: state.nodeHealth[currentNodeId].healthScore,\n        failureTime: NOW,\n        disabledUntil: NOW + (3 * 60 * 60 * 1000),\n        errorDetails: {\n          message: $execution?.data?.error?.message || 'Unknown error',\n          type: $execution?.data?.error?.name || 'Error',\n          timestamp: NOW\n        }\n      }\n    });\n  }\n  \n  return out;\n} else {\n  // Mastodon node succeeded - update success tracking\n  if (!state.nodeStats[currentNodeId]) {\n    state.nodeStats[currentNodeId] = {\n      successCount: 0,\n      failureCount: 0,\n      lastSuccess: NOW,\n      lastFailure: null,\n      totalExecutionTime: 0,\n      averageExecutionTime: 0\n    };\n  }\n  \n  state.nodeStats[currentNodeId].successCount++;\n  state.nodeStats[currentNodeId].lastSuccess = NOW;\n  \n  // Update node health\n  if (!state.nodeHealth[currentNodeId]) {\n    state.nodeHealth[currentNodeId] = {\n      nodeName: currentNodeName,\n      totalExecutions: 0,\n      successfulExecutions: 0,\n      failedExecutions: 0,\n      lastSuccess: NOW,\n      lastFailure: null,\n      healthScore: 100\n    };\n  }\n  \n  state.nodeHealth[currentNodeId].totalExecutions++;\n  state.nodeHealth[currentNodeId].successfulExecutions++;\n  state.nodeHealth[currentNodeId].lastSuccess = NOW;\n  \n  // Reset consecutive failures and improve health score\n  if (state.nodeFailures[currentNodeId]) {\n    state.nodeFailures[currentNodeId].consecutiveFailures = 0;\n  }\n  \n  // Improve health score with success\n  state.nodeHealth[currentNodeId].healthScore = Math.min(100, state.nodeHealth[currentNodeId].healthScore + 5);\n  \n  console.log(`✅ Mastodon node succeeded (total successes: ${state.nodeStats[currentNodeId].successCount}, health score: ${state.nodeHealth[currentNodeId].healthScore}/100)`);\n  \n  // Pass through items normally with success status\n  const items = await $input.all();\n  const out = [];\n  \n  for (const item of items) {\n    out.push({\n      json: {\n        ...item.json,\n        mastodonStatus: 'SUCCESS',\n        successCount: state.nodeStats[currentNodeId].successCount,\n        healthScore: state.nodeHealth[currentNodeId].healthScore,\n        lastSuccess: NOW\n      }\n    });\n  }\n  \n  return out;\n}\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -80,
-        160
-      ],
-      "id": "mastodon-monitor",
-      "name": "Mastodon Monitor"
-    },
-    {
-      "parameters": {
         "mode": "chooseBranch",
         "numberInputs": 4,
         "output": "empty"
@@ -327,10 +288,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        256,
-        528
+        2320,
+        656
       ],
-      "id": "82124849-3493-445e-b459-30c52cf3fac4",
+      "id": "d806f663-e625-4e9e-8027-6473203ae000",
       "name": "Merge1"
     },
     {
@@ -340,10 +301,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        800,
-        752
+        2864,
+        880
       ],
-      "id": "ac7b17f9-f0d5-4e17-8b48-741554ed1778",
+      "id": "06f4ae3c-b74e-4e29-9d64-def9368f350e",
       "name": "Wait Short",
       "webhookId": "6e640606-c6d3-46fd-bb20-232af6cdaa8d"
     },
@@ -354,10 +315,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        720,
-        -80
+        2784,
+        48
       ],
-      "id": "146e6c4a-093d-4727-92b8-ed1e3398fa43",
+      "id": "0b21e686-2ab6-4c62-ad98-a7074071e11e",
       "name": "Wait Long",
       "webhookId": "9a9f63f7-85e9-4ab6-b2ba-d1b8677ab7c7"
     },
@@ -389,10 +350,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        496,
-        192
+        2560,
+        320
       ],
-      "id": "66b3868c-aafe-4a9b-91a6-1cc9dd77c073",
+      "id": "19676e5a-97d3-488e-8ac2-d253780b7aad",
       "name": "if - fail"
     },
     {
@@ -402,10 +363,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        736,
-        384
+        2800,
+        512
       ],
-      "id": "07a21f3f-e908-44dd-beda-9f0445b62741",
+      "id": "182e8155-33f8-401b-872a-1f498ba368d5",
       "name": "Commit"
     },
     {
@@ -420,10 +381,10 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -144,
-        736
+        1920,
+        864
       ],
-      "id": "a8db2230-3380-4fe4-bd68-46625bf36c4a",
+      "id": "e9b3b330-c921-4095-bd7d-8fbc08a57ee8",
       "name": "telegram",
       "webhookId": "f1383b21-5735-4c12-9050-0ca14161fba5",
       "credentials": {
@@ -441,10 +402,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1616,
-        208
+        448,
+        336
       ],
-      "id": "9cfcb9e2-97db-4a65-9d37-f3c615579565",
+      "id": "e156418b-c486-4857-bcd4-c0911889e141",
       "name": "Store"
     },
     {
@@ -454,10 +415,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1392,
-        208
+        672,
+        336
       ],
-      "id": "debug-log",
+      "id": "47b92b95-1515-4514-9bf0-439c50d34344",
       "name": "Debug Log"
     },
     {
@@ -474,10 +435,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -2064,
-        928
+        0,
+        1056
       ],
-      "id": "9297d362-608a-4a49-ac52-482df2d1968a",
+      "id": "f0b3d872-a9c0-4ddb-84d0-3fc48293e53c",
       "name": "Trigger1"
     },
     {
@@ -494,10 +455,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -2064,
-        736
+        0,
+        864
       ],
-      "id": "031c9180-8c55-469c-a1de-9b9fbfb81cac",
+      "id": "2d9347fc-b052-4e39-b6ee-201ddc0c01f8",
       "name": "Trigger2"
     },
     {
@@ -514,10 +475,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -2064,
-        64
+        0,
+        192
       ],
-      "id": "900d426c-593d-4692-99b5-2dc5d4679d81",
+      "id": "eb8f36da-8ec8-4a0e-bc7b-51203a95ea4d",
       "name": "Trigger3"
     },
     {
@@ -534,11 +495,113 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -2064,
-        -128
+        0,
+        0
       ],
-      "id": "2dcc6b23-e776-4ea9-9244-bb8ed71a9d60",
+      "id": "61027ab2-4216-4207-b2df-5cf386fe7f22",
       "name": "Trigger4"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1232
+      ],
+      "id": "223e8ec7-9402-42ad-b7a7-c4d052bd93b4",
+      "name": "Trigger"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1408
+      ],
+      "id": "65f379ab-ac19-459d-8c3d-d188b19adf29",
+      "name": "Trigger5"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-AU&gl=AU&ceid=AU:en",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        1344
+      ],
+      "id": "eb9346d0-f1bd-4155-a803-882cfaf80bbb",
+      "name": "Google - Business"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss?hl=en-AU&gl=AU&ceid=AU:en",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        1120
+      ],
+      "id": "da060601-9088-4b43-a74d-33ab82f296b8",
+      "name": "Google - Australia"
+    },
+    {
+      "parameters": {
+        "url": "https://www.theblaze.com/feeds/feed.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        1584
+      ],
+      "id": "1525ef55-3be1-4738-baa2-7a294124be23",
+      "name": "Blaze"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1584
+      ],
+      "id": "72fc49bd-53ce-47c3-bee9-b1d1e3063de3",
+      "name": "Trigger6"
     }
   ],
   "pinData": {},
@@ -563,6 +626,21 @@
           },
           {
             "node": "Fox World",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google - Australia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google - Business",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Blaze",
             "type": "main",
             "index": 0
           }
@@ -617,18 +695,7 @@
       "main": [
         [
           {
-            "node": "Circuit Breaker",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Circuit Breaker": {
-      "main": [
-        [
-          {
-            "node": "Mastodon Monitor",
+            "node": "Publish new status",
             "type": "main",
             "index": 0
           },
@@ -644,17 +711,6 @@
           },
           {
             "node": "telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mastodon Monitor": {
-      "main": [
-        [
-          {
-            "node": "Publish new status",
             "type": "main",
             "index": 0
           }
@@ -713,8 +769,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Data Cleaner": {
@@ -728,20 +783,10 @@
         ]
       ]
     },
-    "Discord": {
-      "main": []
-    },
-    "Publish new status": {
-      "main": []
-    },
-    "Create a post": {
-      "main": []
-    },
-    "Mastodon Monitor": {
+    "Merge1": {
       "main": [
         [
           {
-            "node": "Publish new status",
             "node": "if - fail",
             "type": "main",
             "index": 0
@@ -799,9 +844,6 @@
           }
         ]
       ]
-    },
-    "telegram": {
-      "main": []
     },
     "Store": {
       "main": [
@@ -873,17 +915,126 @@
           }
         ]
       ]
+    },
+    "Publish new status": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a post": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Discord": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "telegram": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google - Australia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger5": {
+      "main": [
+        [
+          {
+            "node": "Google - Business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google - Business": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google - Australia": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger6": {
+      "main": [
+        [
+          {
+            "node": "Blaze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blaze": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "94e4858a-dc70-4d59-ad8a-1256c65ee03c",
+  "versionId": "e9a0273e-01a2-4560-a412-44200a2557c2",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "4d9b5176904a7ad3adb817dfcf3ed0c7ce744108f936c17d31d5bb74b7b855c2"
   },
-  "id": "PfCu2HntkgzSzrTN",
+  "id": "U7F2zySX44bpXHyv",
   "tags": []
 }
