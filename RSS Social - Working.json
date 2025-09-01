@@ -30,7 +30,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Create a unique, engaging social media post about this article. Be creative and varied - avoid repetitive phrases like 'Stay tuned', 'Don't miss', or 'Read more'. Use different writing styles, tones, and approaches for each post. Focus on the most interesting aspect of the article. Include the TinyURL at the end. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $('Tiny').item.json.data.tiny_url || $json.link }}",
+        "text": "=You are a social media expert creating engaging posts. Write a unique, compelling social media post about this article that will grab attention and encourage clicks. REQUIREMENTS: Maximum 200 characters. Be creative and varied - NO repetitive phrases like 'Stay tuned', 'Don't miss', 'Read more', 'Check out', or 'Click here'. Use different writing styles: questions, statements, exclamations, casual, professional, breaking news, tech-focused. Focus on the MOST interesting or surprising aspect of the article. Make it feel personal and conversational. Include the TinyURL at the end. Use relevant emojis sparingly (1-2 max). STYLE EXAMPLES: Question: '🤔 What does this breakthrough mean for the future?'. Breaking: '🚀 Breaking: Major development announced today'. Casual: 'Hey! This is pretty cool - check it out'. Professional: 'New research reveals significant findings'. Tech: '⚡ Revolutionary technology changes everything'. CONTENT: {{ $json.enhancedContent || $json.content }} URL: {{ $('Tiny').item.json.data.tiny_url || $json.link }}",
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
