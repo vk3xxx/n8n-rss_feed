@@ -30,7 +30,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Create an engaging social media post based on this article. Use the enhanced content and include the original URL for rich preview. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $json.originalUrl || $json.link }}",
+        "text": "=Create an engaging social media post based on this article. Use the enhanced content and include the TinyURL for rich preview. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $json.tiny_url || $json.originalUrl || $json.link }}",
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
@@ -120,6 +120,19 @@
       ],
       "id": "5c72ea1b-684f-4bb1-bd3b-ee97964669e2",
       "name": "Tiny"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TinyURL Fallback: Ensure every post has a working URL\nconst items = await $input.all();\nconst out = [];\n\nfor (const item of items) {\n  try {\n    const originalUrl = item.json.link || '';\n    let tinyUrl = item.json.tiny_url || '';\n    \n    // Check if TinyURL was successful\n    if (!tinyUrl || tinyUrl === originalUrl || tinyUrl.includes('error')) {\n      console.log(`⚠️ TinyURL failed for ${originalUrl}, using original URL`);\n      tinyUrl = originalUrl;\n    } else {\n      console.log(`✅ TinyURL created: ${tinyUrl} for ${originalUrl}`);\n    }\n    \n    // Ensure we always have a URL\n    if (!tinyUrl && !originalUrl) {\n      console.log('❌ No URL available, skipping item');\n      continue;\n    }\n    \n    const enhancedItem = {\n      json: {\n        ...item.json,\n        tiny_url: tinyUrl,\n        original_url: originalUrl,\n        url_status: tinyUrl !== originalUrl ? 'shortened' : 'original',\n        url_processed_at: new Date().toISOString()\n      }\n    };\n    \n    out.push(enhancedItem);\n    \n  } catch (error) {\n    console.error('Error processing URL:', error);\n    // Fallback to original item\n    out.push(item);\n  }\n}\n\nconsole.log(`URL processing complete: ${out.length} items processed`);\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        416
+      ],
+      "id": "url-fallback",
+      "name": "URL Fallback"
     },
     {
       "parameters": {
@@ -285,7 +298,7 @@
     {
       "parameters": {
         "url": "https://masto.supes.com",
-        "text": "={{ $json.text }}\\n\\n{{ $json.originalUrl || $json.link }}",
+        "text": "={{ $json.text }}\\n\\n{{ $json.tiny_url || $json.originalUrl || $json.link }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-mastodon.mastodon",
@@ -696,6 +709,17 @@
       ]
     },
     "Tiny": {
+      "main": [
+        [
+          {
+            "node": "URL Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL Fallback": {
       "main": [
         [
           {
