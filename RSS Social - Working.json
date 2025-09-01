@@ -30,7 +30,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Create an engaging social media post based on this article. Use the enhanced content and include the TinyURL at the end. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $('Tiny').item.json.data.tiny_url || $json.link }}",
+        "text": "=Create a unique, engaging social media post about this article. Be creative and varied - avoid repetitive phrases like 'Stay tuned', 'Don't miss', or 'Read more'. Use different writing styles, tones, and approaches for each post. Focus on the most interesting aspect of the article. Include the TinyURL at the end. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $('Tiny').item.json.data.tiny_url || $json.link }}",
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
@@ -54,6 +54,19 @@
       ],
       "id": "text-cleanup",
       "name": "Text Cleanup"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Content Variation: Add diversity to prevent repetitive posts\nconst items = await $input.all();\nconst out = [];\n\n// Different writing styles and approaches\nconst variations = [\n  // Question style\n  (text, url) => `🤔 ${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Direct statement\n  (text, url) => `${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Exclamation style\n  (text, url) => `🚀 ${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Casual style\n  (text, url) => `Hey! ${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Professional style\n  (text, url) => `${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Breaking news style\n  (text, url) => `📰 ${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Tech style\n  (text, url) => `⚡ ${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`,\n  // Simple style\n  (text, url) => `${text.replace(/^[🎙️📻📡✨➡️👉]*\\s*/, '')} ${url}`\n];\n\nfor (let i = 0; i < items.length; i++) {\n  try {\n    const item = items[i];\n    const originalText = item.json.text || '';\n    const url = item.json.tiny_url || item.json.link || '';\n    \n    // Remove common repetitive phrases\n    let cleanedText = originalText\n      .replace(/Stay tuned with the latest in Ham radio!/gi, '')\n      .replace(/Stay updated with the latest in ham radio!/gi, '')\n      .replace(/Don't miss the updates!/gi, '')\n      .replace(/Tune in now!/gi, '')\n      .replace(/Don't miss out!/gi, '')\n      .replace(/Read more:/gi, '')\n      .replace(/\\s+/g, ' ')\n      .trim();\n    \n    // Apply variation based on item index\n    const variationIndex = i % variations.length;\n    const variation = variations[variationIndex];\n    const variedText = variation(cleanedText, url);\n    \n    console.log(`🎨 Applied variation ${variationIndex + 1} to post ${i + 1}`);\n    \n    const enhancedItem = {\n      json: {\n        ...item.json,\n        text: variedText,\n        originalText: originalText,\n        variationApplied: variationIndex + 1,\n        processedAt: new Date().toISOString()\n      }\n    };\n    \n    out.push(enhancedItem);\n    \n  } catch (error) {\n    console.error('Error applying content variation:', error);\n    out.push(item);\n  }\n}\n\nconsole.log(`🎨 Content variation applied to ${out.length} items`);\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        288
+      ],
+      "id": "content-variation",
+      "name": "Content Variation"
     },
     {
       "parameters": {
@@ -820,6 +833,17 @@
       ]
     },
     "Text Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Content Variation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Variation": {
       "main": [
         [
           {
