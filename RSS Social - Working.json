@@ -30,7 +30,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Create an engaging social media post based on this article. Use the enhanced content and include the TinyURL for rich preview. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $('Tiny').item.json.data.tiny_url || $json.link }}",
+        "text": "=Create an engaging social media post based on this article. Use the enhanced content and include the TinyURL at the end. Maximum 200 characters. {{ $json.enhancedContent || $json.content }} {{ $('Tiny').item.json.data.tiny_url || $json.link }}",
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
@@ -286,7 +286,7 @@
     {
       "parameters": {
         "url": "https://masto.supes.com",
-        "text": "={{ $json.text }}\\n\\n{{ $('Tiny').item.json.data.tiny_url || $json.link }}",
+        "text": "={{ $json.text }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-mastodon.mastodon",
