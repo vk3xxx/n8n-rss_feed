@@ -450,6 +450,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// 24-Hour Filter: Only allow articles published within the last 24 hours\nconst items = await $input.all();\nconst out = [];\nconst NOW = Date.now();\nconst TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds\n\nconsole.log(`🕐 24-Hour Filter: Processing ${items.length} items`);\n\nfor (const item of items) {\n  try {\n    const j = item.json || {};\n    \n    // Get publication date from various possible fields\n    let pubDate = null;\n    if (j.pubDate) {\n      pubDate = new Date(j.pubDate).getTime();\n    } else if (j.isoDate) {\n      pubDate = new Date(j.isoDate).getTime();\n    } else if (j.published) {\n      pubDate = new Date(j.published).getTime();\n    } else if (j.date) {\n      pubDate = new Date(j.date).getTime();\n    }\n    \n    // If no publication date found, skip the item\n    if (!pubDate || isNaN(pubDate)) {\n      console.log(`⏰ Skipping: ${j.title || 'No title'} - No valid publication date`);\n      continue;\n    }\n    \n    // Check if article is within 24 hours\n    const ageInMs = NOW - pubDate;\n    const ageInHours = ageInMs / (60 * 60 * 1000);\n    \n    if (ageInMs <= TWENTY_FOUR_HOURS_MS) {\n      console.log(`✅ Fresh: ${j.title || 'No title'} (${ageInHours.toFixed(1)} hours old)`);\n      out.push(item);\n    } else {\n      console.log(`⏰ Old: ${j.title || 'No title'} (${ageInHours.toFixed(1)} hours old) - Skipped`);\n    }\n    \n  } catch (error) {\n    console.error('Error processing item for 24-hour filter:', error);\n    // Skip items with errors\n    continue;\n  }\n}\n\nconsole.log(`🕐 24-Hour Filter: ${out.length} fresh articles, ${items.length - out.length} old articles skipped`);\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        336
+      ],
+      "id": "24-hour-filter",
+      "name": "24-Hour Filter"
+    },
+    {
+      "parameters": {
         "rule": {
           "interval": [
             {
@@ -906,6 +919,17 @@
       ]
     },
     "Debug Log": {
+      "main": [
+        [
+          {
+            "node": "24-Hour Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "24-Hour Filter": {
       "main": [
         [
           {
